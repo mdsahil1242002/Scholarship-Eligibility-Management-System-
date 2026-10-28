@@ -1,0 +1,224 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scholarship Management System</title>
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+    <div class="container">
+        <p class="tag">STUDENT SERVICES</p>
+        <h1>Scholarship Management System</h1>
+        <p>Manage students and scholarship applications easily.</p>
+    </div>
+</header>
+
+<main class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+            <div class="alert {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <!-- Add Student -->
+    <section class="card">
+        <h2>Add Student</h2>
+        <p class="muted">Enter the student's details below.</p>
+
+        <form action="/students/add" method="POST" class="form-grid">
+            <label>
+                Student ID
+                <input type="number" name="student_id" min="1"
+                       placeholder="e.g. 103" required>
+            </label>
+
+            <label>
+                Full Name
+                <input type="text" name="name"
+                       placeholder="Student name" required>
+            </label>
+
+            <label>
+                Course
+                <input type="text" name="course"
+                       placeholder="e.g. BCA" required>
+            </label>
+
+            <label>
+                Annual Income (₹)
+                <input type="number" name="income" min="0" step="0.01"
+                       placeholder="e.g. 180000" required>
+            </label>
+
+            <button class="btn primary" type="submit">+ Add Student</button>
+        </form>
+    </section>
+
+    <!-- Create Application -->
+    <section class="card">
+        <h2>Create Scholarship Application</h2>
+        <p class="muted">Eligibility is checked using marks and annual income.</p>
+
+        <form action="/applications/add" method="POST" class="form-grid">
+            <label>
+                Select Student
+                <select name="student_id" required>
+                    {% for s in students %}
+                    <option value="{{ s.student_id }}">
+                        {{ s.name }} (ID {{ s.student_id }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label>
+                Select Scholarship
+                <select name="scholarship_id" required>
+                    {% for sh in scholarships %}
+                    <option value="{{ sh.id }}">
+                        {{ sh.name }} — ₹{{ "{:,.0f}".format(sh.award) }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label>
+                Marks (%)
+                <input type="number" name="marks" min="0" max="100"
+                       step="0.01" placeholder="e.g. 85" required>
+            </label>
+
+            <button class="btn primary" type="submit">
+                Submit Application
+            </button>
+        </form>
+    </section>
+
+    <!-- Application List -->
+    <section class="card">
+        <div class="section-heading">
+            <div>
+                <h2>Scholarship Applications</h2>
+                <p class="muted">Approve, reject, or remove applications.</p>
+            </div>
+            <span class="count">{{ applications|length }} records</span>
+        </div>
+
+        {% if applications %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Student</th>
+                        <th>Scholarship</th>
+                        <th>Marks</th>
+                        <th>Income</th>
+                        <th>Award</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in applications %}
+                    <tr>
+                        <td>#{{ a.id }}</td>
+                        <td>
+                            <strong>{{ a.student_name }}</strong>
+                            <small>{{ a.course }} · ID {{ a.student_id }}</small>
+                        </td>
+                        <td>{{ a.scholarship_name }}</td>
+                        <td>{{ a.marks }}%</td>
+                        <td>₹{{ "{:,.0f}".format(a.income) }}</td>
+                        <td>₹{{ "{:,.0f}".format(a.award) }}</td>
+                        <td>
+                            <span class="status {{ a.status }}">
+                                {{ a.status }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="actions">
+                                {% if a.status == 'PENDING' %}
+                                <form method="POST"
+                                      action="/applications/approve/{{ a.id }}">
+                                    <button class="btn approve" type="submit">
+                                        Approve
+                                    </button>
+                                </form>
+
+                                <form method="POST"
+                                      action="/applications/reject/{{ a.id }}">
+                                    <button class="btn reject" type="submit">
+                                        Reject
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                <form method="POST"
+                                      action="/applications/delete/{{ a.id }}"
+                                      onsubmit="return confirm('Remove this application?')">
+                                    <button class="btn remove" type="submit">
+                                        Remove
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <p class="empty">No applications found.</p>
+        {% endif %}
+    </section>
+
+    <!-- Student List -->
+    <section class="card">
+        <div class="section-heading">
+            <div>
+                <h2>Student List</h2>
+                <p class="muted">All students saved in the database.</p>
+            </div>
+            <span class="count">{{ students|length }} students</span>
+        </div>
+
+        {% if students %}
+        <div class="student-grid">
+            {% for s in students %}
+            <div class="student">
+                <div class="avatar">{{ s.name[:1]|upper }}</div>
+
+                <div class="student-info">
+                    <strong>{{ s.name }}</strong>
+                    <small>ID: {{ s.student_id }} · {{ s.course }}</small>
+                    <small>Income: ₹{{ "{:,.0f}".format(s.income) }}</small>
+                </div>
+
+                <form method="POST"
+                      action="/students/delete/{{ s.student_id }}"
+                      onsubmit="return confirm('Delete this student?')">
+                    <button class="btn remove" type="submit">Delete</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+            <p class="empty">No students have been added yet.</p>
+        {% endif %}
+    </section>
+
+</main>
+
+<footer>
+    Scholarship Management System · Academic Project
+</footer>
+
+</body>
+</html>
